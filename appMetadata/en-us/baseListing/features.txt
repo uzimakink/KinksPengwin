@@ -1,0 +1,15 @@
+Pengwin includes wslu, a set of useful open-source utilities for interacting between WSL and Windows.
+A custom pengwin-setup tool, accessible via $ pengwin-setup allows new Pengwin users to get started on Linux immediately.
+Support for many Linux graphical applications with no need to configure DISPLAY in Pengwin.
+pengwin-setup will automatically install and configure VcXsrv or can configure X410.
+Full high dpi compatibility, pengwin-setup will adjust the environment for you.
+Create Windows Start Menu items from Linux desktop apps.
+Install your favorite Linux terminal: Konsole, Terminator, Tilix, etc.
+Install 28,728 open source packages via the apt package management system from the vast Debian repositories and third-party Debian-compatible repositories from outside projects.
+A handful of unnecessary packages have been removed from the base image to reduce image size and increase stability.
+You have access to your Windows home directly from your Linux one via winhome symbolic link.
+Deploy a one-click LAMP stack.
+We have handcrafted a Windows Terminal profile for a pleasant experience.
+Install the most popular development environments.
+New features are actively developed based on community input.
+Pengwin comes with excellent end-user support via our GitHub page.

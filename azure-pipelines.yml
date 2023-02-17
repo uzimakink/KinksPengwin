@@ -1,0 +1,108 @@
+# Universal Windows Platform
+
+# Build a Universal Windows Platform project using Visual Studio.
+# Add steps that test and distribute an app, save build artifacts, and more:
+# https://aka.ms/yaml
+
+trigger:
+  batch: true
+  branches:
+    include: [ master ]
+
+pool:
+  vmImage: 'windows-2022'
+
+variables:
+  solution: '**/*.sln'
+  buildPlatform: 'x64|ARM64'
+  buildConfiguration: 'Release'
+  appxPackageDir: '$(System.DefaultWorkingDirectory)\AppxPackages'
+
+steps:
+- task: DownloadBuildArtifacts@0
+  inputs:
+    buildType: 'specific'
+    project: '84ac49ca-47e0-4979-b8ee-cd1cf8fe4e74'
+    pipeline: '1'
+    specificBuildWithTriggering: true
+    buildVersionToDownload: 'latest'
+    downloadType: 'single'
+    artifactName: 'drop'
+    downloadPath: '$(System.ArtifactsDirectory)'
+- task: CmdLine@2
+  inputs:
+    script: |
+      move $(System.ArtifactsDirectory)\drop\install_amd64_rootfs.tar.gz x64\install.tar.gz
+      move $(System.ArtifactsDirectory)\drop\install_arm64_rootfs.tar.gz ARM64\install.tar.gz
+- task: NuGetToolInstaller@1
+
+- task: NuGetCommand@2
+  inputs:
+    restoreSolution: '$(solution)'
+- task: DownloadSecureFile@1
+  name: signingCert
+  inputs:
+    secureFile: 'store.pfx'
+- task: Bash@3
+  inputs:
+    targetType: 'inline'
+    script: |
+      version=$(sed -n -E '/^ +Version=/s/^ +Version="([0-9\.]*)(.*)/\1/p' Pengwin/Package.appxmanifest)
+      sed -E -i "s/(^.*commandline.*16571368D6CFF_)([0-9\.]+)(_x64)(_.*$)/\1${version}_x64\4/" x64/pengwin.json
+      sed -E -i "s/(^.*icon.*16571368D6CFF_)([0-9\.]+)(_x64)(_.*$)/\1${version}_x64\4/" x64/pengwin.json
+      sed -E -i "s/(^.*backgroundImage.*16571368D6CFF_)([0-9\.]+)(_x64)(_.*$)/\1${version}_x64\4/" x64/pengwin.json
+      
+      cp x64/pengwin.json ARM64/pengwin.json
+      sed -E -i "s/_x64_/_arm64_/g" ARM64/pengwin.json
+
+- task: VSBuild@1
+  inputs:
+    solution: '$(solution)'
+    msbuildArgs: '/t:Pengwin /m /p:AppxBundlePlatforms="$(buildPlatform)" /p:AppxPackageDir="$(appxPackageDir)" /p:AppxBundle=Always /p:UapAppxPackageBuildMode=StoreUpload /p:PackageCertificateThumbprint=""  /p:PackageCertificateKeyFile="$(signingCert.secureFilePath)" /p:PackageCertificatePassword="1"'
+    platform: 'x64'
+    configuration: '$(buildConfiguration)'
+    maximumCpuCount: true
+    msbuildArchitecture: 'x64'
+
+
+- task: CopyFiles@2
+  inputs:
+    SourceFolder: '$(appxPackageDir)'
+    Contents: '**\*bundle.msixupload'
+    TargetFolder: '$(Build.ArtifactStagingDirectory)'
+- task: CopyFiles@2
+  inputs:
+    SourceFolder: '$(appxPackageDir)'
+    Contents: '**\*.msixbundle'
+    TargetFolder: '$(Build.ArtifactStagingDirectory)'
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
+- task: store-flight@0
+  continueOnError: true
+  timeoutInMinutes: 10
+  inputs:
+    serviceEndpoint: 'Whitewater Foundry'
+    appId: '9NV1GV1PXZ6P'
+    flightName: 'Azure Pipelines'
+    packagePath: '$(Build.ArtifactStagingDirectory)\**\*bundle.msixupload'
+    force: true
+    skipPolling: false
+    deletePackages: true
+    numberOfPackagesToKeep: '2'
+- task: store-publish@0
+  continueOnError: true
+  timeoutInMinutes: 10
+  inputs:
+    serviceEndpoint: 'Whitewater Foundry'
+    appId: '9NV1GV1PXZ6P'
+    metadataUpdateMethod: 'TextMetadata'
+    metadataPath: '$(System.DefaultWorkingDirectory)\appMetadata'
+    updateImages: true
+    packagePath: '$(Build.ArtifactStagingDirectory)\**\*bundle.msixupload'
+    force: true
+    skipPolling: false
+    deletePackages: true
+    numberOfPackagesToKeep: '2'
